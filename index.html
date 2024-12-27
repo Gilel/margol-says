@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מה מרגול היתה אומרת</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #1a73e8;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        textarea, input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 10px;
+            font-family: inherit;
+        }
+
+        button {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #1557b0;
+        }
+
+        .response-section {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+
+        #loading {
+            text-align: center;
+            color: #666;
+            margin: 20px 0;
+        }
+
+        #response {
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .api-key-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #fff3cd;
+            border-radius: 8px;
+            border: 1px solid #ffeeba;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>מה מרגול היתה אומרת</h1>
+        <div class="api-key-section" id="apiKeySection">
+            <p>על מנת להשתמש באפליקציה, יש להזין מפתח OpenAI API:</p>
+            <input type="password" id="apiKey" placeholder="הזן את מפתח ה-API שלך" />
+            <button id="saveApiKey">שמור מפתח</button>
+        </div>
+        <div class="input-section hidden" id="mainSection">
+            <textarea id="userInput" placeholder="מה יושב עליך?" rows="4"></textarea>
+            <button id="submitBtn">שלח</button>
+        </div>
+        <div class="response-section">
+            <div id="loading" style="display: none;">מעבדת את המחשבות שלך...</div>
+            <div id="response"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiKeySection = document.getElementById('apiKeySection');
+            const mainSection = document.getElementById('mainSection');
+            const apiKeyInput = document.getElementById('apiKey');
+            const saveApiKeyBtn = document.getElementById('saveApiKey');
+            const submitBtn = document.getElementById('submitBtn');
+            const userInput = document.getElementById('userInput');
+            const responseDiv = document.getElementById('response');
+            const loadingDiv = document.getElementById('loading');
+
+            // Check if API key exists in localStorage
+            const savedApiKey = localStorage.getItem('openai_api_key');
+            if (savedApiKey) {
+                apiKeySection.classList.add('hidden');
+                mainSection.classList.remove('hidden');
+            }
+
+            saveApiKeyBtn.addEventListener('click', () => {
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    localStorage.setItem('openai_api_key', apiKey);
+                    apiKeySection.classList.add('hidden');
+                    mainSection.classList.remove('hidden');
+                }
+            });
+
+            submitBtn.addEventListener('click', async () => {
+                const text = userInput.value.trim();
+                if (!text) return;
+
+                const apiKey = localStorage.getItem('openai_api_key');
+                if (!apiKey) {
+                    responseDiv.textContent = 'נא להזין מפתח API תקין';
+                    return;
+                }
+
+                try {
+                    loadingDiv.style.display = 'block';
+                    responseDiv.textContent = '';
+
+                    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+                        model: "gpt-4",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "את מרגול, דמות חכמה ואמפתית שנותנת עצות חיים בסגנון ייחודי"
+                            },
+                            {
+                                role: "user",
+                                content: `בתור מרגול, נתבקשת לתת עצה או תגובה לאדם שכתב: "${text}". אנא תני תשובה בסגנון של מרגול - חכמה, אמפתית, ועם נגיעה של הומור עדין. התשובה צריכה להיות בעברית ובטון חם ותומך.`
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 300
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const aiResponse = response.data.choices[0].message.content;
+                    responseDiv.textContent = aiResponse;
+                } catch (error) {
+                    console.error('Error:', error);
+                    if (error.response?.status === 401) {
+                        responseDiv.textContent = 'מפתח ה-API אינו תקין. נא לנסות שוב עם מפתח חדש.';
+                        localStorage.removeItem('openai_api_key');
+                        apiKeySection.classList.remove('hidden');
+                        mainSection.classList.add('hidden');
+                    } else {
+                        responseDiv.textContent = 'אירעה שגיאה בעיבוד הבקשה. נסה שוב מאוחר יותר.';
+                    }
+                } finally {
+                    loadingDiv.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
